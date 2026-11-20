@@ -1,0 +1,255 @@
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+.masthead {
+  margin-bottom: 24px;
+}
+
+.masthead h1 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.masthead p {
+  color: var(--muted);
+}
+
+/* --- Search form --- */
+.search-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: start;
+  background: var(--surface);
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.field input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+  width: 100%;
+}
+
+.field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.field input[aria-invalid='true'] {
+  border-color: var(--error-border);
+}
+
+.field input#origin,
+.field input#destination {
+  text-transform: uppercase;
+}
+
+.field-error {
+  font-size: 0.75rem;
+  color: var(--error-text);
+}
+
+.search-form button {
+  align-self: end;
+  height: 42px;
+  padding: 0 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.search-form button:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.search-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- States --- */
+.hint,
+.results-count {
+  color: var(--muted);
+  margin: 24px 4px 12px;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--muted);
+}
+
+.state--error {
+  color: var(--error-text);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 12px;
+  margin-top: 24px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Results --- */
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.itinerary {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.itinerary-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--line);
+}
+
+.itinerary-header .duration {
+  font-weight: 700;
+}
+
+.stops-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-dark);
+  background: rgba(37, 99, 235, 0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.itinerary-header .price {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.legs {
+  padding: 8px 16px 16px;
+}
+
+.leg {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.leg-endpoint {
+  display: flex;
+  flex-direction: column;
+  min-width: 64px;
+}
+
+.leg-endpoint--arrive {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.leg-time {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.overnight {
+  color: var(--accent);
+  font-size: 0.65rem;
+  margin-left: 2px;
+}
+
+.leg-airport {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.leg-middle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.leg-line {
+  color: var(--line);
+  font-size: 1.1rem;
+}
+
+.layover {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 6px 0 6px 80px;
+  border-top: 1px dashed var(--line);
+}
+
+.intl-tag {
+  color: var(--intl);
+  font-weight: 600;
+}
+
+/* --- Responsive --- */
+@media (max-width: 620px) {
+  .search-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .search-form button {
+    grid-column: 1 / -1;
+  }
+  .leg-middle {
+    display: none;
+  }
+  .layover {
+    padding-left: 0;
+    text-align: center;
+  }
+}
