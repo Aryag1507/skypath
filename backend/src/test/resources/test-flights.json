@@ -1,0 +1,12 @@
+{
+  "airports": [
+    { "code": "JFK", "name": "John F. Kennedy International", "city": "New York", "country": "US", "timezone": "America/New_York" },
+    { "code": "LAX", "name": "Los Angeles International", "city": "Los Angeles", "country": "US", "timezone": "America/Los_Angeles" },
+    { "code": "LHR", "name": "Heathrow", "city": "London", "country": "GB", "timezone": "Europe/London" }
+  ],
+  "flights": [
+    { "flightNumber": "SP1", "airline": "SkyPath Airways", "origin": "JFK", "destination": "LAX", "departureTime": "2024-03-15T08:00:00", "arrivalTime": "2024-03-15T11:00:00", "price": 299.00, "aircraft": "A320" },
+    { "flightNumber": "SP2", "airline": "SkyPath Airways", "origin": "JFK", "destination": "LHR", "departureTime": "2024-03-15T20:00:00", "arrivalTime": "2024-03-16T07:00:00", "price": 650.00, "aircraft": "B777" },
+    { "flightNumber": "SP3", "airline": "SkyPath Airways", "origin": "XXX", "destination": "LAX", "departureTime": "2024-03-15T09:00:00", "arrivalTime": "2024-03-15T12:00:00", "price": 199.00, "aircraft": "A320" }
+  ]
+}
