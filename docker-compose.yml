@@ -1,0 +1,33 @@
+# One-command startup for the whole app:  docker-compose up
+#
+#   frontend (nginx, :5173) ──/api──▶ backend (Spring Boot, :8080)
+#
+# The flights dataset stays at the repo root as the single source of truth and
+# is mounted read-only into the backend, so the image carries no data copy.
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Point the app at the mounted dataset (overrides the dev default).
+      SKYPATH_DATA_LOCATION: "file:/data/flights.json"
+    volumes:
+      - ./flights.json:/data/flights.json:ro
+    healthcheck:
+      # App is ready once it accepts connections on 8080 (bash is present in the
+      # temurin image; this needs no extra tools).
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
