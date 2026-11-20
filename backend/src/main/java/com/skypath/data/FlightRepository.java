@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * simple.
  */
 @Repository
-public class FlightRepository {
+public class FlightRepository implements AirportCatalog {
 
     private static final Logger log = LoggerFactory.getLogger(FlightRepository.class);
 
@@ -70,11 +70,13 @@ public class FlightRepository {
     }
 
     /** Looks up an airport by IATA code, if present. */
+    @Override
     public Optional<Airport> findAirport(String code) {
         return Optional.ofNullable(airportsByCode.get(code));
     }
 
     /** Whether an airport with the given IATA code exists in the dataset. */
+    @Override
     public boolean hasAirport(String code) {
         return airportsByCode.containsKey(code);
     }
