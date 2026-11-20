@@ -43,6 +43,17 @@ public class FlightRepository implements AirportCatalog {
         this.loader = loader;
     }
 
+    /**
+     * Creates a repository pre-populated from already-loaded data, bypassing
+     * the startup loader. Useful for tests and manual wiring that supply their
+     * own in-memory dataset.
+     */
+    public static FlightRepository withData(FlightData data) {
+        FlightRepository repository = new FlightRepository(null);
+        repository.index(data);
+        return repository;
+    }
+
     @PostConstruct
     void init() {
         FlightData data = loader.load();
