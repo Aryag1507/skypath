@@ -18,17 +18,17 @@ Prerequisite: Docker running (Docker Desktop, Colima, etc.).
 ```bash
 git clone https://github.com/Aryag1507/skypath
 cd skypath
-docker-compose up --build
+docker-compose up
 ```
 
 Then open **http://localhost:5173**.
 
 - The frontend (nginx) serves the UI and proxies `/api` to the backend, so the
   whole app is reachable from that one URL.
-- The first build takes a few minutes (it downloads Maven/npm dependencies);
-  subsequent runs start in seconds.
-- `--build` is included so a stale image is never reused. Plain
-  `docker-compose up` also works on a fresh clone.
+- On a fresh clone there are no images yet, so this builds them automatically on
+  the first run (a few minutes to download Maven/npm dependencies); subsequent
+  runs start in seconds. To force a rebuild after changing the code, use
+  `docker-compose up --build`.
 - If ports `5173` or `8080` are already in use on your machine, change the
   host-side port in [`docker-compose.yml`](docker-compose.yml) (e.g.
   `"5174:80"`) and open that port instead. `5173` is the default used
