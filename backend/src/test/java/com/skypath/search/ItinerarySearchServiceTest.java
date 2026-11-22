@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -147,6 +148,48 @@ class ItinerarySearchServiceTest {
         assertThat(itinerary.totalPrice()).isEqualByComparingTo(BigDecimal.valueOf(200));
     }
 
+    @Test
+    void connectionMayDepartTheDayAfterTheFirstLeg() {
+        // First leg departs late on 03-15; the onward flight departs after midnight
+        // on 03-16 with a valid 60-minute layover.
+        ZonedDateTime dep1 = ZonedDateTime.of(2024, 3, 15, 23, 0, 0, 0, UTC);
+        ZonedDateTime arr1 = ZonedDateTime.of(2024, 3, 15, 23, 50, 0, 0, UTC);
+        ZonedDateTime dep2 = ZonedDateTime.of(2024, 3, 16, 0, 50, 0, 0, UTC);
+        ZonedDateTime arr2 = ZonedDateTime.of(2024, 3, 16, 2, 0, 0, 0, UTC);
+        var service = serviceFor(List.of(
+                new Flight("L1", "SkyPath", "A", "C", dep1, arr1, BigDecimal.valueOf(100), "A320"),
+                new Flight("L2", "SkyPath", "C", "B", dep2, arr2, BigDecimal.valueOf(100), "A320")));
+
+        List<Itinerary> results = service.search("A", "B", DATE);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.getFirst().stops()).isEqualTo(1);
+        // The connecting leg legitimately departs the day after the search date.
+        assertThat(results.getFirst().segments().get(1).departureTime().toLocalDate())
+                .isEqualTo(LocalDate.of(2024, 3, 16));
+    }
+
+    @Test
+    void twoStopCanMixDomesticAndInternationalLayovers() {
+        // JFK(US) -> ORD(US) -> LAX(US) -> YYZ(CA): the ORD connection is domestic,
+        // the LAX connection is international (the onward flight leaves the country).
+        // The LAX connection is international, so it needs the 90-minute minimum
+        // (12:00 arrival -> 13:30 departure), not the 45-minute domestic one.
+        var service = serviceFor(List.of(
+                flight("S1", "JFK", "ORD", at(8, 0), at(9, 0)),
+                flight("S2", "ORD", "LAX", at(10, 0), at(12, 0)),
+                flight("S3", "LAX", "YYZ", at(13, 30), at(16, 30))),
+                Map.of("YYZ", "CA"));
+
+        Itinerary itinerary = service.search("JFK", "YYZ", DATE).getFirst();
+
+        assertThat(itinerary.stops()).isEqualTo(2);
+        assertThat(itinerary.layovers().get(0).airportCode()).isEqualTo("ORD");
+        assertThat(itinerary.layovers().get(0).international()).isFalse();
+        assertThat(itinerary.layovers().get(1).airportCode()).isEqualTo("LAX");
+        assertThat(itinerary.layovers().get(1).international()).isTrue();
+    }
+
     // --- helpers ---
 
     private ZonedDateTime at(int hour, int minute) {
@@ -159,15 +202,24 @@ class ItinerarySearchServiceTest {
                 departure, arrival, BigDecimal.valueOf(100), "A320");
     }
 
-    /** Builds a service over a graph whose airports are inferred from the flights. */
+    /** Builds a service over a graph whose airports are inferred from the flights (all US). */
     private ItinerarySearchService serviceFor(List<Flight> flights) {
+        return serviceFor(flights, Map.of());
+    }
+
+    /**
+     * Builds a service over a graph whose airports are inferred from the flights,
+     * with per-airport country overrides (defaulting to US) for classifying
+     * domestic vs. international connections.
+     */
+    private ItinerarySearchService serviceFor(List<Flight> flights, Map<String, String> countryByCode) {
         Set<String> codes = new HashSet<>();
         for (Flight f : flights) {
             codes.add(f.origin());
             codes.add(f.destination());
         }
         List<Airport> airports = codes.stream()
-                .map(c -> new Airport(c, c, c, "US", UTC))
+                .map(c -> new Airport(c, c, c, countryByCode.getOrDefault(c, "US"), UTC))
                 .toList();
         FlightRepository repo = FlightRepository.withData(new FlightData(airports, flights));
         return new ItinerarySearchService(repo, new ConnectionRules(repo));
