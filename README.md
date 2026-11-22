@@ -166,8 +166,15 @@ Dijkstra:
 - Edge validity is **time-dependent** (whether you can take the next flight
   depends on when the previous one landed and the layover window) rather than a
   simple additive weight.
-- The two-stop cap makes the search space tiny and bounded, so the cleverness
-  of Dijkstra buys nothing here.
+- The two-stop cap bounds the search to at most three legs deep, so the
+  cleverness of a weighted shortest-path algorithm buys nothing here.
+
+**Performance.** Because a trip is at most three flights, the search only ever
+chains three flights deep. To find where it can go next from an airport, it
+looks that airport up in the origin-keyed index and immediately gets just that
+airport's departures — rather than scanning all ~300 flights every time. That
+keeps each step cheap, so the number of combinations it checks stays small. On
+this dataset (25 airports) a search completes near-instantly.
 
 The result: a simpler, obviously-correct algorithm that's easy to reason about.
 Results are sorted by total travel time after the search
@@ -179,13 +186,17 @@ keeping "what's valid" (search + rules) separate from "what's best" (ranking).
 Every time in the dataset is local wall-clock time, so durations can't be
 computed from the raw strings. The loader resolves each flight's departure
 against its **origin** airport's zone and its arrival against its
-**destination** airport's zone, producing absolute `ZonedDateTime` instants
+**destination** airport's zone into a `ZonedDateTime` — a local time together
+with its zone and offset, which maps to a unique point on the global timeline
+(an `Instant`)
 ([`FlightDataLoader`](backend/src/main/java/com/skypath/data/FlightDataLoader.java)).
 
-This happens exactly once, at load time. Nothing downstream ever sees a naive
-timestamp, so layover and total-duration math is correct for free — including
-date-line cases like `SYD → LAX`, where the arrival's local time appears earlier
-than the departure's but the UTC duration is a sensible ~15 hours.
+This happens exactly once, at load time. Durations are then computed with
+`Duration.between(...)`, which compares those underlying instants — so layover
+and total-duration math is correct for free, without any layer re-parsing a
+naive timestamp. This includes date-line cases like `SYD → LAX`, where the
+arrival's local time appears earlier than the departure's but the elapsed time
+is a sensible ~15 hours.
 
 ### Connection rules: a pure, isolated component
 
@@ -231,28 +242,38 @@ wall-clock (as a traveler expects), with a `+1` marker on overnight legs.
 - **Domestic means every airport across both connecting flights shares one
   country** — the faithful reading of "both flights within the same country."
   This correctly treats e.g. `US → CA → US` as *international* (a naive check of
-  just the first and last airport would not).
+  just the first and last airport would not). Each layover is classified
+  **independently**, so a two-stop itinerary can have an international connection
+  at one stop and a domestic one at the other.
+- **Itineraries don't revisit an airport.** The search won't route through the
+  same airport twice in one trip. The brief doesn't address this; forbidding it
+  avoids nonsensical loops, at the cost of excluding contrived
+  same-airport-twice routings.
 - **Unknown country → treated as international** (the stricter 90-minute rule),
   on a "when unsure, demand the safer layover" basis.
 - **No result cap / pagination.** The dataset is small and capped at two stops,
   so every valid itinerary is returned; capping could hide a valid
   fastest/cheapest option. (See *What I'd improve*.)
-- **Malformed records are skipped, not fatal.** The real `flights.json` contains
-  one flight with a typo'd origin (`JKF` instead of `JFK`); it's logged and
-  skipped, so 302 of 303 flights load and the service still starts cleanly.
+- **Malformed records are skipped, not fatal.** The provided `flights.json`
+  contains **303** flight records (the instructions' "~260" is an approximation;
+  the counts here are from the actual file). One record, `SP995`, has a typo'd
+  origin `JKF` that isn't a known airport, so its timezone can't be resolved;
+  it's logged and skipped rather than guessed, so 302 of 303 flights load and the
+  service still starts cleanly.
 
 ---
 
 ## Testing
 
-37 tests, focused on the correctness-critical areas:
+39 tests, focused on the correctness-critical areas:
 
 - **Connection rules** — boundary tests for the layover thresholds (44 invalid /
   45 valid, 89 / 90, 6h00m valid / 6h01m invalid), domestic vs. international
   classification, same-airport and chronology checks.
 - **Search** — unit tests over small hand-built graphs (direct, ranking,
-  short/long-layover rejection, two-stop cap, no-revisit, date filter), plus
-  integration tests against the real dataset.
+  short/long-layover rejection, two-stop cap, no-revisit, date filter,
+  cross-midnight connections, and a two-stop route mixing a domestic and an
+  international layover), plus integration tests against the real dataset.
 - **API** — MockMvc tests for a valid search and each error case.
 
 The six official scenarios are covered end to end across the search integration
@@ -264,8 +285,9 @@ tests (cases 1, 2, 3, 6) and the controller tests (cases 4, 5).
 
 - **In-memory data, no database.** Simple and fast for a read-only dataset of
   this size; wouldn't scale to a live, mutable schedule.
-- **Tests skipped in the Docker image build.** They run locally and in CI; the
-  image build stays fast and deterministic.
+- **Tests skipped in the Docker image build.** They run locally via `mvn test`;
+  the image build stays fast and deterministic. (Running them automatically in a
+  CI pipeline is listed under *What I'd improve*.)
 - **Dataset mounted, not baked into the image.** Keeps one source of truth at
   the repo root at the cost of a volume mount in compose.
 - **Unpaginated results** (see Assumptions / below).
