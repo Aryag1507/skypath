@@ -265,7 +265,7 @@ wall-clock (as a traveler expects), with a `+1` marker on overnight legs.
 
 ## Testing
 
-39 tests, focused on the correctness-critical areas:
+42 tests, focused on the correctness-critical areas:
 
 - **Connection rules** — boundary tests for the layover thresholds (44 invalid /
   45 valid, 89 / 90, 6h00m valid / 6h01m invalid), domestic vs. international

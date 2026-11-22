@@ -58,6 +58,11 @@ public class FlightDataLoader {
     public FlightData load() {
         Resource resource = resourceLoader.getResource(location);
         log.info("Loading flight data from {}", resource);
+        if (!resource.exists()) {
+            throw new IllegalStateException(
+                    "Flight data not found at '" + location + "'. Set SKYPATH_DATA_LOCATION "
+                            + "or ensure flights.json is present and mounted into the container.");
+        }
         try (InputStream in = resource.getInputStream()) {
             return parse(in);
         } catch (IOException e) {
@@ -75,7 +80,13 @@ public class FlightDataLoader {
         try {
             file = objectMapper.readValue(jsonStream, FlightDataFile.class);
         } catch (IOException e) {
-            throw new UncheckedIOException("Malformed flight data JSON", e);
+            // An empty source (e.g. a mount that didn't resolve) lands here too.
+            throw new UncheckedIOException(
+                    "Flight data source is empty or not valid JSON", e);
+        }
+        if (file == null || (file.airports() == null && file.flights() == null)) {
+            throw new IllegalStateException(
+                    "Flight data source is empty or missing its 'airports' and 'flights' fields");
         }
 
         List<Airport> airports = mapAirports(file.airports());
@@ -127,6 +138,14 @@ public class FlightDataLoader {
                         LocalDateTime.parse(dto.departureTime()).atZone(originZone);
                 ZonedDateTime arrival =
                         LocalDateTime.parse(dto.arrivalTime()).atZone(destZone);
+                if (!arrival.isAfter(departure)) {
+                    // Guards against bad data: a flight must land after it departs
+                    // (compared as absolute instants, so time zones are accounted for).
+                    log.warn("Skipping flight {}: arrival is not after departure",
+                            dto.flightNumber());
+                    skipped++;
+                    continue;
+                }
                 result.add(new Flight(
                         dto.flightNumber(), dto.airline(), dto.origin(), dto.destination(),
                         departure, arrival, dto.price(), dto.aircraft()));

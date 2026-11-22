@@ -4,13 +4,16 @@ import com.skypath.domain.Airport;
 import com.skypath.domain.Flight;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Verifies the loader's core responsibility: parsing the dataset and resolving
@@ -26,6 +29,46 @@ class FlightDataLoaderTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    void emptySourceFailsWithAClearMessage() {
+        // e.g. a bind-mount that didn't resolve, leaving an empty file.
+        InputStream empty = new ByteArrayInputStream(new byte[0]);
+
+        assertThatThrownBy(() -> loader.parse(empty))
+                .hasMessageContaining("empty");
+    }
+
+    @Test
+    void sourceMissingAirportsAndFlightsFailsWithAClearMessage() {
+        InputStream emptyJson = new ByteArrayInputStream("{}".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> loader.parse(emptyJson))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("airports");
+    }
+
+    @Test
+    void skipsFlightWhoseArrivalIsNotAfterDeparture() {
+        // GOOD lands 6h after departure; BAD "arrives" before it leaves once zones
+        // are applied (LAX 20:00 PDT = 03:00Z, JFK 22:00 EDT = 02:00Z).
+        String json = """
+                {
+                  "airports": [
+                    {"code":"JFK","name":"JFK","city":"NY","country":"US","timezone":"America/New_York"},
+                    {"code":"LAX","name":"LAX","city":"LA","country":"US","timezone":"America/Los_Angeles"}
+                  ],
+                  "flights": [
+                    {"flightNumber":"GOOD","airline":"SP","origin":"JFK","destination":"LAX","departureTime":"2024-03-15T08:00:00","arrivalTime":"2024-03-15T11:00:00","price":100,"aircraft":"A320"},
+                    {"flightNumber":"BAD","airline":"SP","origin":"LAX","destination":"JFK","departureTime":"2024-03-15T20:00:00","arrivalTime":"2024-03-15T22:00:00","price":100,"aircraft":"A320"}
+                  ]
+                }
+                """;
+        List<Flight> flights =
+                loader.parse(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))).flights();
+
+        assertThat(flights).extracting(Flight::flightNumber).containsExactly("GOOD");
     }
 
     @Test
