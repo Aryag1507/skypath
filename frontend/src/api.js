@@ -8,7 +8,7 @@ export async function searchFlights({ origin, destination, date }) {
   try {
     response = await fetch(`/api/search?${params.toString()}`)
   } catch {
-    throw new Error('Could not reach the server. Is the backend running?')
+    throw new Error('Could not reach the server. Please check your connection and try again.')
   }
 
   let body = null
